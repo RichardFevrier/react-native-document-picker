@@ -29,6 +29,7 @@ declare module 'react-native-document-picker' {
       pdf: 'com.adobe.pdf';
       video: 'public.movie';
       zip: 'public.zip-archive';
+      folder: 'public.folder';
     };
     extensions: {
       allFiles: '*';

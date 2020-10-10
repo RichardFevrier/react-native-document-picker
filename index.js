@@ -66,6 +66,14 @@ function pick(opts) {
     throw new TypeError('Invalid mode option: ' + opts.mode);
   }
 
+  if (opts.mode === 'import') {
+    opts.type.forEach((type) => {
+      if (type === 'folder') {
+        throw new TypeError('Invalid mode option: ' + opts.mode + ' for this type: ' + type);
+      }
+    });
+  }
+
   if ('copyTo' in opts && !['cachesDirectory', 'documentDirectory'].includes(opts.copyTo)) {
     throw new TypeError('Invalid copyTo option: ' + opts.copyTo);
   }
@@ -111,6 +119,7 @@ const Types = {
     pdf: 'com.adobe.pdf',
     video: 'public.movie',
     zip: 'public.zip-archive',
+    folder: 'public.folder',
   },
   extensions: {
     allFiles: '*',
