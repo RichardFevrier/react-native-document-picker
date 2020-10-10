@@ -20,6 +20,22 @@ static NSString *const FIELD_NAME = @"name";
 static NSString *const FIELD_TYPE = @"type";
 static NSString *const FIELD_SIZE = @"size";
 
+@interface RNDocumentPickerViewController : UIDocumentPickerViewController
+
+@property (nonatomic, assign) BOOL isPromiseResolvedOrRejected;
+
+@end
+
+@implementation RNDocumentPickerViewController
+
+- (void)dealloc
+{
+    if (self.isPromiseResolvedOrRejected) {return;}
+    [self.delegate documentPickerWasCancelled:self];
+}
+
+@end
+
 @interface RNDocumentPicker () <UIDocumentPickerDelegate>
 @end
 
@@ -72,19 +88,18 @@ RCT_EXPORT_METHOD(pick:(NSDictionary *)options
     [composeRejecters addObject:reject];
 
     NSArray *allowedUTIs = [RCTConvert NSArray:options[OPTION_TYPE]];
-    UIDocumentPickerViewController *documentPicker = [[UIDocumentPickerViewController alloc] initWithDocumentTypes:(NSArray *)allowedUTIs inMode:mode];
-    documentPicker.delegate = self;
-    documentPicker.modalPresentationStyle = UIModalPresentationFormSheet;
+    UIDocumentPickerViewController *documentPickerViewController = [[RNDocumentPickerViewController alloc] initWithDocumentTypes:(NSArray *)allowedUTIs inMode:mode];
+    documentPickerViewController.delegate = self;
+    documentPickerViewController.modalPresentationStyle = UIModalPresentationFormSheet;
     
 #if __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000
     if (@available(iOS 11, *)) {
-        documentPicker.allowsMultipleSelection = [RCTConvert BOOL:options[OPTION_MULTIPLE]];
+        documentPickerViewController.allowsMultipleSelection = [RCTConvert BOOL:options[OPTION_MULTIPLE]];
     }
 #endif
     
     UIViewController *rootViewController = RCTPresentedViewController();
-    
-    [rootViewController presentViewController:documentPicker animated:YES completion:nil];
+    [rootViewController presentViewController:documentPickerViewController animated:YES completion:nil];
 }
 
 - (NSMutableDictionary *)getMetadataForUrl:(NSURL *)url error:(NSError **)error
@@ -186,12 +201,13 @@ RCT_EXPORT_METHOD(releaseSecureAccess:(NSArray<NSString *> *)uris)
     }
 }
 
-- (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentAtURL:(NSURL *)url
+- (void)documentPicker:(RNDocumentPickerViewController *)controller didPickDocumentAtURL:(NSURL *)url
 {
     RCTPromiseResolveBlock resolve = [composeResolvers lastObject];
     RCTPromiseRejectBlock reject = [composeRejecters lastObject];
     [composeResolvers removeLastObject];
     [composeRejecters removeLastObject];
+    controller.isPromiseResolvedOrRejected = YES;
     
     NSError *error;
     NSMutableDictionary *result = [self getMetadataForUrl:url error:&error];
@@ -203,12 +219,13 @@ RCT_EXPORT_METHOD(releaseSecureAccess:(NSArray<NSString *> *)uris)
     }
 }
 
-- (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls
+- (void)documentPicker:(RNDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls
 {
     RCTPromiseResolveBlock resolve = [composeResolvers lastObject];
     RCTPromiseRejectBlock reject = [composeRejecters lastObject];
     [composeResolvers removeLastObject];
     [composeRejecters removeLastObject];
+    controller.isPromiseResolvedOrRejected = YES;
     
     NSMutableArray *results = [NSMutableArray array];
     for (id url in urls) {
@@ -225,11 +242,12 @@ RCT_EXPORT_METHOD(releaseSecureAccess:(NSArray<NSString *> *)uris)
     resolve(results);
 }
 
-- (void)documentPickerWasCancelled:(UIDocumentPickerViewController *)controller
+- (void)documentPickerWasCancelled:(RNDocumentPickerViewController *)controller
 {
     RCTPromiseRejectBlock reject = [composeRejecters lastObject];
     [composeResolvers removeLastObject];
     [composeRejecters removeLastObject];
+    controller.isPromiseResolvedOrRejected = YES;
     
     reject(E_DOCUMENT_PICKER_CANCELED, @"User canceled document picker", nil);
 }
